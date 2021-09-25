@@ -1,0 +1,11 @@
+{
+    "git.ignoreLimitWarning": true,
+    "files.autoSave": "afterDelay",
+    "editor.cursorStyle": "block-outline",
+    "editor.bracketPairColorization.enabled": true,
+    "editor.fontWeight": "100",
+    "workbench.colorCustomizations": {
+
+    },
+    "workbench.list.smoothScrolling": true,
+}
