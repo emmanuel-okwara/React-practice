@@ -1,0 +1,505 @@
+Until now the only resource the Express and Node.js server was serving was static content in the form of index.html. 
+
+We'll start fetching and storing the data using APIs from the Express and Node.js server in addition to the static HTML file. This will replace the hard-coded array of issues in the browser's memory.
+
+We will be making changes to both front-end and back-end, as we'll be implementing as well as consuming the APIs. We will not persist the data on disk; instead we'll just use a simulated database in the server's memory 
+
+# `Express`
+
+Express can do much more than just serve files. Express is a minimal, yet, flexible web application framework. It's minimal in the sense that by itself, Express does very little. It relies on other modules called middleware to provide the functionality that most applications will need
+
+## `Routing`
+
+The first concept is that of routing, At the heart of Express is a router, which essentially takes a client request, matches it against any routes that are present, and executes the handler function that is associated with that route The handler function is expected to generate the appropriate response. 
+
+A route specification consists of an HTTP method (GET, POST, etc), a path specification that matches the request URL, and the route handler. the handler is passed in a request object and a response object. The request object can be inspected to get the various details of the request, and the response object's methods can be used to send the response to the client.
+
+We already have an Express application in which we created using the express() function. We also installed a middleware for handling static files. a middleware functions deals with any request matching the path specification, regardless of the HTTP method. In contrast , a route can match a request with a specific HTTP method. So instead of app.use() , app.get() has to be used in order to match the GET HTTP method Further, the handler function, the second argument that the routing function takes, can set the response to be sent back to the caller.
+
+```jsx
+app.get('/hello',(req,res)=>{
+	res.send('Hello World! ');
+})
+```
+
+# `Request Matching`
+
+When a request is received , the first thing that Express does is match the request to one of the routes.The request method is matched against the route's method. IN the previous example, the route's method is get() so any HTTP request using the GET method will match it. Further the request URL is matched with the path specification, the first argument in the route, which is /hello. When a HTTP request matches this specification, the handler function is called. In the previous example, we just responded with a text message . The route's method and path need not be specific. if you want to match all HTTP methods, you could write app.all().  if you needed to match multiple paths, you could pass in an array of paths, or even a regular expression like '/*.do' will match any request ending with the extension. .do. Regular expressions are rarely used, but route parameters are often used
+
+## `Route Parameters`
+
+Route parameters are named segments in the path specification that match  a part of the URL. If a match occurs, the value in the part of the URL is supplied as a variable in the request object.
+
+This is used in the following form:
+
+```jsx
+app.get('/customers/:customerId',...)
+```
+
+The URL /customers/1234 will match the route specification, and so will /customers/4567. In either case, the customer Id will be captured and supplied  to the handler function as part of the request in req. params, with the name of the parameters as the key . Thus, req.params.customerId will have the value 1234 or 4567 for eac of these URLs, respectively.
+
+## `Route Lookup`
+
+Multiple routes can be set up to match different URLs and patterns. The router does not try to find a best match; instead, it tries to match all routes in the order in which they are installed. The first match is used. So , if two routes are possible matches to a request, it will use the first defined one. So , the routes have to be defined in the order of priority.
+
+Thus, if you add patterns rather than very specific paths, you should be careful to add the more generic pattern after the specific paths in case a request can match both. 
+
+## `Handler function`
+
+Once a router is matched , the handler function is called, which in the previous example was an anonymous function supplied to the route setup function. The parameters passed to the handler are a request object and a response object. The handler fucntion is not expected to return any value. But it can inspect the request object and send out a response as part of the response object based on the request parameters.
+
+# `Request Object`
+
+Any aspect of the request can be inspected using the request object's properties and methods. A few important and useful properties and methods are listed here:
+
+• req.params: This is an object containing properties mapped to the named route 
+parameters as you saw in the example that used :customerId. The property’s key will 
+be the name of the route parameter (customerId in this case) and the value will be 
+the actual string sent as part of the HTTP request.
+
+• req.query: This holds a parsed query string. It’s an object with keys as the query 
+string parameters and values as the query string values. Multiple keys with the same 
+name are converted to arrays, and keys with a square bracket notation result in 
+nested objects (e.g., order[status]=closed can be accessed as req.query.order.
+status).
+
+•req.header, req.get(header): The get method gives access to any header in the 
+request. The header property is an object with all headers stored as key-value pairs. 
+Some headers are treated specially (like Accept) and have dedicated methods in the 
+request object for them. That’s because common tasks that depend on these headers 
+can be easily handled.
+
+•req.path: This contains the path part of the URL, that is, everything up to any ? that 
+starts the query string. Usually, the path is part of the route specification, but if the 
+path is a pattern that can match different URLs, you can use this property to get the 
+actual path that was received in the request.
+
+•req.url, req.originalURL: These properties contain the complete URL, 
+including the query string. Note that if you have any middleware that modifies 
+the request URL, originalURL will hold the URL as it was received, before the 
+modification.
+
+• req.body: This contains the body of the request, valid for POST, PUT, and PATCH 
+requests. Note that the body is not available (req.body will be undefined) unless a 
+middleware is installed to read and optionally interpret or parse the body.
+
+## `Response Object`
+
+The response object is used to construct and send a response. Note that If no response is sent, the client is left waiting. 
+
+- res.send(body): You already saw the res.send() method briefly , which responded with a string. This method can also accept a buffer. If the body is an object or an array, it is automatically converted to JSON string with an appropriate content type.
+- res.status(code): This sets the response status code. IF not se, it is defaulted to 200 OK. ONe common way of sending an error is by combining the status() and send() methods in a single call like res.status(403). send('Access Denied").
+- res.json(object): This is the same as res.send(), except that this method forces conversion of the parameter passed into a JSON, whereas res.send() may treat some parameters like null differently. It also makes the code readable and explicit, stating that you are indeed sending out a JSON.
+- res.sendFile(path): This responds with the contents of the file path. The content type of the response is guessed using the extension of the file.
+
+## `Middleware`
+
+Express is a web framework that has minimal functionality of its own. An express application is essentially a series of middleware function calls. In fact, the Router itself is nothing but a middleware function. The distinction is that middleware usually works on generic handling of requests and/or things that need to be done for all or most request, but not necessarily be the last in the chain, that sends out a response. A route on the other hand , is meant to be used for a specific path+method combination and is expected to send out a response.
+
+Middleware functions are those that have access to the request object (req), the response object (res), and the next middleware function in the application's request-response cycle. The next middleware function is commonly denoted by a variable named next. 
+
+Middleware can be at the application level or at a specific path level. The way to use a middleware at the application level is to simply supply the function to the application, like this:
+
+```jsx
+app.use(middlwareFunction);
+```
+
+In the case of the static middleware, we constructed a middleware function by calling express.static() method. This not only returned a middleware function, but also configured it to use the directory called public to look for the static files. 
+
+In order to use the same middleware for only request matching a certain URL path, say, /public , the app.use() method would have to be called with two arguments, the first one being the path, like this:
+
+```jsx
+app.use('/public',express.static('public'));
+```
+
+This would have mounted the static middleware on the path /public and all static files would have to be accessed with the prefix /public , for example , /public/index.html
+
+# `Rest Api`
+
+REST (short for representational state transfer) is an architectural pattern for application programming interfaces (APIs). There are other older patterns such as SOAP and XMLRPC, but of late, the REST pattern has gained popularity.
+
+Since the APIs in the issue Tracker application are only for internal consumption, we could use any API pattern or even invent our own. But let's not do that because using an existing pattern forces you to think and organize the APIs and schema  better and encourages some good practices.
+
+Although we won't be using the Rest Pattern, I'll discuss it briefly since it is one of the more popular choices due to its simplicity and small number of constructs. It'll let you appreciate the differences and the logic for the choice that I'll make eventually  , to use GraphQL.
+
+## `Resource Based`
+
+The APIs are resource based. Thus, API names like getSomething or saveSomething are not normal in REST APIs. In fact, there are no API names in the conventional sense, because APIs are formed by a combination of resources and actions. There are really only resource names called endpoints.
+
+Resources are accessed based on a Uniform Resource Identifier (URI), also known as an endpoint. Resources are nouns. You typically use two URIs per resource: one for the collection and one for the individual object where 1234 uniquely identifies a customer.
+
+Resources can also form a hierarchy. For example, the collection of orders of a customer is identified by /customers/1234/orders, and an order of that customer is identified by /cutomers/1234/orders/43.
+
+## `HTTP Methods as Actions`
+
+To access and manipulate the resources , you use HTTP methods. While resources were nouns, the HTTP methods are verbs that operate on them. They map to CRUD operations on the resource. 
+
+Operation Method Resource Example Remarks
+Read – List GET Collection GET /customers Lists objects (additional query 
+string can be used for filtering and 
+sorting)
+Read GET Object GET /
+customers/1234
+Returns a single object (query string 
+may be used to specify which fields)
+Create POST Collection POST /customers Creates an object with the values 
+specified in the body
+Update PUT Object PUT /
+customers/1234
+Replaces the object with the one 
+specified in the body
+Update PATCH Object PATCH /
+customers/1234
+Modifies some properties of the 
+object, as specified in the body
+Delete DELETE Object DELETE /
+customers/1234
+Deletes the object
+
+Some other operations such as DELETE and PUT in the collection may also be used to delete and modify the entire collection in one shot, but this is not common usage. HEAD and OPTIONS are also valid verbs that give out information about the resources rather than actual data. They are used mainly for APIs that are externally exposed and consumed by many different clients.
+
+Although the HTTP method and operation mapping are well mapped and specified, REST by itself lays down no rules for the following:
+
+- Filtering , sorting and paginating a list of objects. The query string is commonly used in an implementation-specific way to specify these.
+- Specifying  which fields to return in a READ operation.
+- IF there are embedded objects, specifying which of those to expand in a READ operation.
+- Specifying which fields to modify in a PATCH operation.
+- Representation of objects. You are free to use JSON, XML or any other representation for the objects in both Read and Write operations.
+
+Given the fact that different API set use different ways of dealing with theses issue, most REST API implementations are most REST-like than strict REST. This has affected common adoption and there are , therefore, a lack  of tools that can help do much of the common things that need to be done to implement a REST-based API.
+
+# `GraphQL`
+
+Although the REST Paradigm is quite useful in making APIs predictable, the shortcomings discussed previously have made it hard to use it when different clients access the same set of APIs. For example, how an object is displayed in a mobile application and the same in displayed in a desktop browser can be quite different, and therefore , a more granular control as well as aggregation of different resources may work better. 
+
+GraphQL was developed to address just these concerns. As a result, GraphQL is a far more elaborate specification, with the following salient features.
+
+## `Field Specification`
+
+Unlike REST APIs , where you have little control on what the server returns as part of an object, in GraphQL, the properties of an object that need to be returned must be specified. Specifying no fields of an object would, in a REST API, return the entire object. In contrast, in a GraphQL query , it is invalid to request nothing
+
+This lets the client control the amount of data that is transferred over the network, making it more efficient, especially for lighter front-ends such as mobile applications. Further, additon of new capabilities does not require you to introduce a new version of the API set. Given a query, since the shape of the returned data is determined by it, the effect of it is the same , regardless of changes to the API.
+
+A downside to this that there is a bit of a learning curve for the GraphQL query language, which must be used to make any API call. Fortunately, the specification of the language is quite simple and easy to master.
+
+## `Graph Based`
+
+REST APIs were resource based, whereas GraphQL is graph based This means that relationships between objects are naturally in GraphQL apis. 
+
+In the Issue Tracker application , you could think of Issues and Users having a relation: An issue is assigned to a user, and a user has one or more issues assigned to them. When querying for a user's properties, GraphQL makes it natural to query for some properties associated with all the issues assigned to them as well.
+
+## `Single EndPoint`
+
+GraphQL API servers have a single endpoint in contrast to one endpoint per resource in REST. The name of the resource or field being accessed is supplied as part of the query itself. 
+
+This makes it possible to use a single query for all the data that is required by a client. Due to the graph-based nature of the query, all related objects can be retrieved as part of a query for one object. Not only that, even related objects can be queried in a single call to the API server. This obviates the need for  "aggregation " services whose job was to put together multiple API results into one bundle.
+
+## `Strongly Typed`
+
+GraphQL is a strongly typed query language. All fields and arguments have a type against which both queries and results can be validated and give descriptive error messages. In addition to types, it is also possible to specify which fields and arguments are required and which others are optional. All this is done using the GraphQL schema language. 
+
+The advantage of a strongly typed system is that it prevents errors. This is great thing, considering that APIs are written and consumed by different teams and there is bound to be communication gaps due to this. The type system of GraphQL has its own language for specifying the details of the types that you wish to support in your API. it supports the basic scalar types such as integer and string, objects composed of these basic data types, and custom scalar types and enumerations
+
+## `Introspection`
+
+A GraphQL server can be queried for the types it supports. This creates a powerful platform for tools and client software to build atop this information. This includes code-generation utilities is statically typed languages and explorers that let developers test and learn an API set quickly, without grepping the codebase or wrangling with cURL
+
+## `Libraries`
+
+Parsing and dealing with the type system language as well as the query language is hard to do on your own. Fortunately , there are tools and libraries available in most languages for this purpose. ll
+
+## `The About API`
+
+Let's start with a simple API that returns a string, called About. In this section, we'll implement this API as well as another API that lets us change the string that is returned by this API. This will let you learn the basics of simple reads as well as writes using GraphQL.
+
+Before we start writing the code for it, we need the npm packages for graphql-tools, apollo-server, and the base package graphql that these depend on. The package graphql-tools is a dependency of apollo-server-express, so we don't have to specify it explicitly, whereas graphql is a peer dependency that needs to be installed separately. 
+
+```jsx
+npm install graphql apollo-server-express
+```
+
+Now, let's define the schema of the APIs that we need to support. The GraphQL schema language requires us to define each type using the type keyword followed by the name of the type, followed by its specification within curly braces. For example , to define a User type containing a string for the user's name, this is the specification in the schema language:
+
+```jsx
+type User{
+	name: Strng
+}
+```
+
+For the About API , we don't need any special types, just the basic data type String is good enough. But GraphQL schema has two special types that are entry points into the type system, called Query and mutation. All other APIs or fields are defined hierarchically under these two types, which are like the entry points into the API. Query fields are expected to return existing state, whereas mutation fields are expected to change something in the application's data.
+
+A schema must have at least the Query type. The distinction between the query and mutation types is notional: there is nothing that you can do in a query or mutation that you cannot do in the other. But a subtle difference is that whereas query fields are executed in parallel, mutation fields are executed in series. So it's best to use the as they are meant to be used: implement READ operations under Query and things that modify the system under Mutation.
+
+The GraphQL type system supports the following basic data type:
+
+- Int : A signed 32-bit integer.
+- Float : A signed double-precision floating point value
+- String: A UTF-8 character sequence.
+- Boolean : true or false.
+- ID : This represents a unique identifier, serialized as a string. Using an ID instead of a string indicates that it is not intended to be human-readable.
+
+In addition to specifying the type, the Schema Language has a provision to indicate whether the value is optional or mandatory. By default, all values are optional , and those that require a value are defined by adding an exclamation character after the type.
+
+In the About API, all we need is a field called about under Query, which is a string and a mandatory one. Note that the schema definition is a string in JavaScript. We'll use the template string format so that we can smoothly add newlines within the schema. thus the schema definition of the about field that can be queried is written like this.
+
+```jsx
+const typeDefs=`
+		type Query {
+		about: String!
+	}
+`
+```
+
+We'll use the variable typeDefs when we initialize the server, but before that, let's also define another field that lets us change the message and call this setAboutMessage. But this needs an input value for the new message that we will receive. Such input values are specified just like in function calls: using parentheses. Thus ,to indicate that this field needs a mandatory string input called message, we need to write
+
+```jsx
+setAboutMessage(message:String!)
+```
+
+Note that all arguments must be named. There are no positional arguments in the Graphql Schema language. Also all fields must have a type , and there is no void or other type that indicates that the field returns nothing.
+
+Let's use a string data type as the return value for the setAboutMessage field and add it to the schema under the Mutation type. Let's also name the variable that contains the schema typeDefs and define it as a string in server.js:
+
+```jsx
+const typeDefs = `
+	type Query{
+		about: String!
+	}
+	type Mutation{
+		setAboutMessage(message: String!): String	
+	}
+`
+```
+
+The next step is to have handlers or functions that can be called when these fields are accessed. Such functions are called resolvers because they resolve a query to a field with real values. Although the schema definition was done in the special Schema Language, the implementation of resolvers depends on the programming language that we use. 
+
+In the Apollo Server as well as in graphql-tools, resolvers are specified as nested objects that follow the structure of the schema. At every leaf level, the field needs to be resolved using a function of the same name as the field. Thus at the topmost level, we'll have two properties named Query and Mutation in the resolver. 
+
+```jsx
+const resolvers = {
+	Query: {
+		about : () => "Hi this is the about message".nh
+	},
+Mutation: {
+	},
+};
+```
+
+The setAboutMessage function is not so simple since we'll need to receive input arguments. All resolve functions are supplied four arguments like this:
+
+```jsx
+fieldName(obj, args, context, info)
+```
+
+The return value should be of the type that is specified in the schema. In the case of the field setAboutMessge, since the return value is optional, it can choose to return nothing. but it's good practice to return something
+
+```jsx
+function setAboutMessage(_,{message}){
+	return aboutMessage = message;
+}
+
+Mutation: {
+	setAboutMessage,
+}
+```
+
+Now that we have the schema defined as well as the corresponding resolvers, we are ready to initialize the GraphQl server. The way to do this is to construct and ApolloServer object defined in the apollo-server-express package. The constructor takes in an object with at least two properties— typeDefs and resolvers — and returns a GraphQl server object.
+
+```jsx
+const {ApolloServer} = require('apollo-server-express')
+const express = require('express')
+
+let aboutMessage = "Issue Tracker API v1.0";
+
+const typeDefs  = `
+	type Query {
+			about : String!
+	}
+	type Mutation {
+
+			setAboutMessage(message: String!): String
+	}
+`;
+
+const resolver = {
+	Query : {
+		about : () => aboutMessage,
+	},
+	Mutation: {
+		setAboutMessage,
+	},
+}
+
+function setAboutMessage(_,{message}){
+	reutrn aboutMessae = message
+}
+
+const app = express();
+app.use(express.static('public'));
+
+server.applyMiddleware({app,path: '/graphql'});
+
+app.listen(3000, function () {
+	console.log('App started on port 3000');
+})
+```
+
+With this you can run the server and access the graphql server that we have created and query for the data like this
+
+```jsx
+query{
+		about	
+	}
+
+```
+
+This will return back :
+
+```jsx
+{
+	"data": {
+		"about":"Issue Tracker API v1.0"
+		}
+}
+```
+
+The output is a regular JSON object unlike the query , which followed the query language syntax. It also reflects the structure of the query , with "data" as the root object in the result.
+
+## `GraphQL Schema File`
+
+we could try to make our work cleaner by creating a graphql schema file that we could call from the server.js file and run the server.
+
+```jsx
+type Query{
+	about: String!
+}
+
+type Mutation {
+	setAboutMessage(message: String!): String
+}
+```
+
+Now we can import the fs module and use the readFileSync function to read the file. Then , we can use the string that readFile returned as the value for the property typeDefs when creating the ApolloServer.
+
+```jsx
+const fs = require('fs')
+const express = require('express')
+
+const server = new ApolloSever({
+	typeDefs: fs.readFileSync(./server/schema.graphql','utf-8'),
+resolvers,
+})
+```
+
+Theres just thing that needs a change: the nodemon tool that restarts the server on detection of changes to files by default only looks for changes to files with .js extension. To make it watch for changes to other extensions, we need to add an -e option specifying all the extensions it needs to watch for. Since added a file with extension . Graphql, lets specify js and graphql as the two extensions for this option.
+
+```jsx
+"scripts": {
+	"start": "nodemon -w server -e js, graphql server/server.js",
+	"compile": "babel src --out-dir public",
+}
+```
+
+## `The List API`
+
+We are going to be creating an issue api that we are going to integrate with our react app
+
+We will start by modifying the schema to define a custom type called Issue. It should contain all the fields of the issue object that we have been using up to now. But since there is no scalar type to denote a date in Graphql , lets use a string type for the time being.
+
+```jsx
+type Issue{
+	id : Int!
+	title: String!
+	status: String!
+  owner: String
+  effort: Int
+  created: String!
+  due: String
+}
+
+type Query{
+	about: StringQ
+	issueList: [Issue!]!
+}
+type Mutation{
+	setAboutMessage(message: String!): String
+}
+```
+
+In the server code, we need to add a resolver under Query for the new field , which points to a function. We'll also have an array of issues that is a stand-in for a database. We can immediately return this array form the resolver. The function could be in place like that for the about field, 
+
+```jsx
+const issuesDB = [
+ {
+ id: 1, status: 'New', owner: 'Ravan', effort: 5,
+ created: new Date('2019-01-15'), due: undefined,
+ title: 'Error in console when clicking Add',
+ },
+ {
+ id: 2, status: 'Assigned', owner: 'Eddie', effort: 14,
+ created: new Date('2019-01-16'), due: new Date('2019-02-01'),
+ title: 'Missing bottom border on panel',
+ },
+];
+const resolvers = {
+ Query: {
+ about: () => aboutMessage,
+ issueList,
+ },
+ Mutation: {
+ setAboutMessage,
+ },
+};
+function setAboutMessage(_, { message }) {
+ return aboutMessage = message;
+}
+function issueList() {
+ return issuesDB;
+}
+```
+
+To test this in the Playground, you will need to run a query that specifies the issueList field, with  subfields, But first, a refresh of the browser is needed so that the playground has the latest schema and doesn't show errors when you type the query.
+
+```jsx
+query{
+	issueList{
+		id
+		title
+		created
+	}
+}
+```
+
+## `List API Integration`
+
+Now that we have the list Api working, let's get it integrated into the UI. we will replace the implementation of the loadData() method in the issueList React component with something that fetches the data from the server.
+
+For explorer users , a polyfill for the Fetch API is available from whatwg-fetch. Lets use this polyfill directly from a CDN and include it in index.html
+
+```jsx
+<script src="https://unpkg.com/whatwg-fetch@3.0.0/dist/fetch.umd.js"></script>
+```
+
+inside of our loadData() function within the App.jsx we need to construct a GraphQL query. this is a simple string like what we used in the playground to test the issuelist GraphQL field. But we've to ensure that we're querying for all subfields of an issue, so the following can be the query for fetching all issues and all sbubfields:
+
+```jsx
+const query = `
+	query {
+		issueList {
+					id title status owner created effort due
+		}
+	}
+`
+```
+
+Now we will send this query as the value for the query property within a JSON , as part of the body to the fetch request. The method we'll use in POST  and we'll add a header that indicates that the content type is JSON. here's the complete fetch request:
+
+```jsx
+const response = await fetch ('/graphql',{
+	method: 'POST',
+	headers: {'Content-Type': 'application/json'},
+	body : JSON.stringifyy({ query })
+})
+```
+
+in order for our code to work we need to initiate the async keyword in front of the loadData() this will

@@ -1,11 +1,13 @@
+scalar GraphQLData
+
 type Issue{
     id: Int!
     title : String!
     status: String!
     owner: String
     effort: Int!
-    created: String!
-    due: String
+    created: GraphQLData
+    due: GraphQLData
 }
 type Query{
     about: String!

@@ -5,7 +5,17 @@ const fs = require('fs')
 
 // Defining the ApolloServer::
 const {ApolloServer} = require('apollo-server-express')
+ 
+// Creating the GraphQLScalarType 
+const { GraphQLScalarType } = require('graphql');
 
+const GraphQLDate = new GraphQLScalarType({
+    name: 'GraphQLDate',
+    description: 'A Date() type in GraphQL as a scalar',
+    serialize(value) { 
+        return value.toISOString(); 
+    },
+})
 
 //Creating an express application
 const app = express()
@@ -56,6 +66,7 @@ const resolvers = {
     Mutation: {
         setAboutMessage,
     },
+    GraphQLDate
 }
 
 //Schema for graphql
